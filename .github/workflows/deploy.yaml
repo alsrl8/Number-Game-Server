@@ -42,3 +42,7 @@ jobs:
       - name: Transfer to Google Cloud Compute Instance
         run: |
           gcloud compute scp ./$BUILD_RESULT $USER@$INSTANCE_NAME:~/ --zone=$ZONE
+
+      - name: Run Game Server
+        run: |
+          gcloud compute ssh $USER@$INSTANCE_NAME --zone=$ZONE --command="nohup ./$BUILD_RESULT > /server_log 2>&1 &" 
