@@ -45,4 +45,4 @@ jobs:
 
       - name: Run Game Server
         run: |
-          gcloud compute ssh $USER@$INSTANCE_NAME --zone=$ZONE --command="nohup ./$BUILD_RESULT > /server_log 2>&1 &" 
+          gcloud compute ssh $USER@$INSTANCE_NAME --zone=$ZONE --command="nohup ./$BUILD_RESULT &" 
