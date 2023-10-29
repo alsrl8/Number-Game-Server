@@ -1,11 +1,14 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 var webSocketUpgrade = websocket.Upgrader{
@@ -13,10 +16,31 @@ var webSocketUpgrade = websocket.Upgrader{
 		return true
 	},
 }
-var clients = make(map[*websocket.Conn]bool)
+var clients = make(map[*websocket.Conn]string)
 var scores = make(map[*websocket.Conn]int)
 
-func run(ws *websocket.Conn) {
+func generateSessionID() string {
+	now := time.Now()
+	dateTimeFormat := now.Format("060102_150405_")
+
+	b := make([]byte, 4) // 4 bytes == 8 hex characters
+	_, err := rand.Read(b)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return dateTimeFormat + hex.EncodeToString(b)
+}
+
+func generatePlayerID() string {
+	b := make([]byte, 4) // 4 bytes == 8 hex characters
+	_, err := rand.Read(b)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return hex.EncodeToString(b)
+}
+
+func run(ws *websocket.Conn, sessionID string) {
 	defer func(ws *websocket.Conn) {
 		err := ws.Close()
 		if err != nil {
@@ -42,11 +66,16 @@ func run(ws *websocket.Conn) {
 				log.Printf("Too many clients")
 				continue
 			}
+			ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Session ID: %s", sessionID)))
+			ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Player ID: %s", clients[ws])))
 			for client := range clients {
-
 				client.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Player Num: %d", len(clients))))
-				log.Printf("Send message to client(%s): %s", client.LocalAddr(), fmt.Sprintf("Player Num: %d", len(clients)))
+				if client != ws {
+					client.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Opponent ID: %s", clients[ws])))
+					ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Opponent ID: %s", clients[client])))
+				}
 			}
+			log.Printf("clients: %+v", clients)
 		} else {
 			// Convert the received message to an integer
 			num, err := strconv.Atoi(string(msg))
@@ -97,14 +126,16 @@ func checkWinner() {
 }
 
 func main() {
+	sessionID := generateSessionID()
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		ws, err := webSocketUpgrade.Upgrade(w, r, nil)
 		if err != nil {
 			log.Println("Failed to upgrade request: ", err)
 			return
 		}
-		clients[ws] = true
-		go run(ws)
+		clients[ws] = generatePlayerID()
+		go run(ws, sessionID)
 	})
 
 	log.Printf("Server is listening on :8080...")
