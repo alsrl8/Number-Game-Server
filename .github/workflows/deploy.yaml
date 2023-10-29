@@ -43,8 +43,8 @@ jobs:
         run: |
           gcloud compute scp ./$BUILD_RESULT $USER@$INSTANCE_NAME:~/ --zone=$ZONE
 
-      - name: Run Game Server
-        run: |
-          gcloud compute ssh $USER@$INSTANCE_NAME --zone=$ZONE --command="nohup ./$BUILD_RESULT > ~/game_server_output.log 2>&1 & exit"
+#      - name: Run Game Server
+#        run: |
+#          gcloud compute ssh $USER@$INSTANCE_NAME --zone=$ZONE --command="nohup ./$BUILD_RESULT > ~/game_server_output.log 2>&1 & exit"
 
 
